@@ -111,7 +111,7 @@ def handle_updates(grouped_updates):
         current_passwd = current_chat.passwd if current_chat else None
         for upd in g_upd:
             text = upd["message"]["text"]
-            if text == "/start":
+            if text == "/start" and current_state == 0:
                 start_message = """Welcome to Emails in Telegram bot!
 It allows you to receive email from your different
 mailboxes right into this Telegram chat.
@@ -156,9 +156,9 @@ def main():
                     res = get_new_emails(c.login, c.passwd)
                 except Exception as e:
                     fail_respond = '''You entered invalid credentials
-or you should allow access third party applications to your mailbox.
-For example, to allow access in gmail follow further instructions:
-https://support.google.com/mail/answer/7126229
+
+Make sure that you entered application password and not human one,
+google how to generate application password for your mailbox.
 
 Try send /new and enter valid credentials again'''
                     print(e)
