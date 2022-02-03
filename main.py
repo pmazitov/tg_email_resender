@@ -27,7 +27,6 @@ def get_url(url):
     content = response.content.decode("utf8")
     return content
 
-
 def get_json_from_url(url):
     content = get_url(url)
     js = json.loads(content)
@@ -65,6 +64,8 @@ def get_new_emails(imap_login, imap_password):
     EMAIL = imap_login
     PASSWORD = imap_password
     SERVER = 'imap.' + imap_login[ix + 1:]
+    if imap_login[ix + 1:] == 'bk.ru':
+        SERVER = 'imap.mail.ru'
 
     mail = imaplib.IMAP4_SSL(SERVER)
     mail.login(EMAIL, PASSWORD)
@@ -118,15 +119,20 @@ mailboxes right into this Telegram chat.
 To add a mailbox you want to receive messages from send /new."""
 
                 send_message(start_message, chat_id)
-            elif text == "/new":
+            elif text == "/new" and current_state == 0:
                 current_state = 1
-                Chats(chat_id=chat_id, state=current_state)
+                if not current_chat:
+                    Chats(chat_id=chat_id, state=current_state)
+                else:
+                    current_chat.state = current_state
                 send_message('Enter your email', chat_id)
-            elif current_state == 1:
+            elif current_chat and current_state == 1:
                 current_chat.state = 2
                 current_chat.login = text
-                send_message('Enter your password', chat_id)
-            elif current_state == 2:
+                mes = '''Enter your APPLICATION password
+(google how to generate application password for your mailbox)'''
+                send_message(mes, chat_id)
+            elif current_chat and current_state == 2:
                 current_chat.state = 0
                 current_chat.passwd = text
                 send_message('Done!', chat_id)
@@ -148,16 +154,22 @@ def main():
             if c.login and c.passwd:
                 try:
                     res = get_new_emails(c.login, c.passwd)
-                except Exception:
-                    fail_respond = '''You entered invalid credentials.
+                except Exception as e:
+                    fail_respond = '''You entered invalid credentials
+or you should allow access third party applications to your mailbox.
+For example, to allow access in gmail follow further instructions:
+https://support.google.com/mail/answer/7126229
 
 Try send /new and enter valid credentials again'''
+                    print(e)
 
             if fail_respond:
                 send_message(fail_respond, c.chat_id)
                 c.delete()
             else:
                 for e in res:
+                    send_message(f"From: {e['from']}", c.chat_id)
+                    send_message(f"Subject: {e['subj']}", c.chat_id)
                     send_message(e['content'], c.chat_id)
         time.sleep(0.5)
 
