@@ -66,7 +66,8 @@ def get_new_emails(imap_login, imap_password):
     SERVER = 'imap.' + imap_login[ix + 1:]
     if imap_login[ix + 1:] == 'bk.ru':
         SERVER = 'imap.mail.ru'
-
+    elif imap_login[ix + 1:] == 'phystech.edu':
+        SERVER = 'imap.gmail.com'
     mail = imaplib.IMAP4_SSL(SERVER)
     mail.login(EMAIL, PASSWORD)
     mail.select('inbox', readonly=False)
@@ -116,7 +117,9 @@ def handle_updates(grouped_updates):
 It allows you to receive email from your different
 mailboxes right into this Telegram chat.
 
-To add a mailbox you want to receive messages from send /new."""
+To add a mailbox you want to receive messages from send /new
+
+To stop receive messages from current active mailbox send /stop"""
 
                 send_message(start_message, chat_id)
             elif text == "/new" and current_state == 0:
@@ -136,6 +139,13 @@ To add a mailbox you want to receive messages from send /new."""
                 current_chat.state = 0
                 current_chat.passwd = text
                 send_message('Done!', chat_id)
+            elif text == '/stop' and  current_state == 0:
+                if current_chat:
+                    current_chat.delete()
+                mes = '''Your mailbox is disconnected from this chatbot now
+
+To connect this chatbot to your mailbox again send /new'''
+                send_message(mes, chat_id)
 
 
 @orm.db_session()
