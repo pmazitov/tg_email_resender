@@ -94,7 +94,7 @@ def get_new_emails(imap_login, imap_password):
                     if from_[1] else from_[0]
                 subject_ = email.header.decode_header(message['subject'])[0]
                 mail_subject = subject_[0].decode(subject_[1], 'replace') \
-                    if subject_[1] else subject[0]
+                    if subject_[1] else subject_[0]
 
                 if message.is_multipart():
                     mail_content = ''
@@ -179,7 +179,7 @@ def main():
                 except Exception as e:
                     fail_respond = '''You entered invalid credentials
 
-Make sure that you entered application password and not human one,\
+Make sure that you entered application password and not human one, \
 google how to generate application password for your mailbox.
 
 Try send /new and enter valid credentials again'''
