@@ -7,6 +7,8 @@ import email
 import imaplib
 import sys
 from pony import orm
+import quopri
+
 
 db = orm.Database()
 class Chats(db.Entity):
@@ -85,18 +87,28 @@ def get_new_emails(imap_login, imap_password):
         for response_part in data:
             if isinstance(response_part, tuple):
                 message = email.message_from_bytes(response_part[1])
-                typ, data = mail.store(i, '+FLAGS', '\\Deleted')
+                typ, data = mail.store(i, '+FLAGS', '\\Seen')
 
-                mail_from = message['from']
-                mail_subject = message['subject']
+                from_ = email.header.decode_header(message['from'])[0]
+                mail_from = from_[0].decode(from_[1], 'replace') \
+                    if from_[1] else from_[0]
+                subject_ = email.header.decode_header(message['subject'])[0]
+                mail_subject = subject_[0].decode(subject_[1], 'replace') \
+                    if subject_[1] else subject[0]
 
                 if message.is_multipart():
                     mail_content = ''
                     for part in message.get_payload():
                         if part.get_content_type() == 'text/plain':
-                            mail_content += part.get_payload()
+                            payload_bytes = part.get_payload(decode=True)
+                            charset = part.get_content_charset('utf-8')
+                            mail_content += payload_bytes\
+                                .decode(charset, 'replace')
                 else:
-                    mail_content = message.get_payload()
+                    charset = message.get_charset('utf-8')
+                    mail_content = message.get_payload(decode=True)\
+                        .decode(charset, 'replace')
+
 
                 result += [{'from': mail_from, 'subj': mail_subject,
                             'content': mail_content}]
@@ -113,9 +125,9 @@ def handle_updates(grouped_updates):
         for upd in g_upd:
             text = upd["message"]["text"]
             if text == "/start" and current_state == 0:
-                start_message = """Welcome to Emails in Telegram bot!
-It allows you to receive email from your different
-mailboxes right into this Telegram chat.
+                start_message = """Welcome to Emails2Telegram bot!
+It allows you to receive emails from your \
+mailbox right into this Telegram chat.
 
 To add a mailbox you want to receive messages from send /new
 
@@ -142,9 +154,9 @@ To stop receive messages from current active mailbox send /stop"""
             elif text == '/stop' and  current_state == 0:
                 if current_chat:
                     current_chat.delete()
-                mes = '''Your mailbox is disconnected from this chatbot now
+                mes = '''Your mailbox is disconnected from the chatbot now.
 
-To connect this chatbot to your mailbox again send /new'''
+To connect the chatbot to your mailbox again send /new'''
                 send_message(mes, chat_id)
 
 
@@ -167,7 +179,7 @@ def main():
                 except Exception as e:
                     fail_respond = '''You entered invalid credentials
 
-Make sure that you entered application password and not human one,
+Make sure that you entered application password and not human one,\
 google how to generate application password for your mailbox.
 
 Try send /new and enter valid credentials again'''
@@ -178,9 +190,13 @@ Try send /new and enter valid credentials again'''
                 c.delete()
             else:
                 for e in res:
-                    send_message(f"From: {e['from']}", c.chat_id)
-                    send_message(f"Subject: {e['subj']}", c.chat_id)
-                    send_message(e['content'], c.chat_id)
+                    respond = '''From: {0}
+Subject: {1}
+-------------------
+
+{2}'''.format(e['from'], e['subj'], e['content'])
+                    send_message(respond, c.chat_id)
+        orm.commit()
         time.sleep(0.5)
 
 if __name__ == '__main__':
